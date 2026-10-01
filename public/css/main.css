@@ -35,4 +35,17 @@ body {
         display: block;
         margin: 0 auto;
     }
+
+    &.blue-theme { background-color: #e3f2fd; }
+
+    &.green-theme { background-color: #e8f5e8; }
+    
+    &.red-theme { background-color: #ffebee; }
+}
+
+.demo-section {
+    ol {
+        text-align: left;
+        display: inline-block;
+    }
 }
