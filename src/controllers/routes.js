@@ -2,12 +2,10 @@ import { Router } from 'express';
 import { addDemoHeaders } from '../middleware/demo/headers.js';
 import { catalogPage, courseDetailPage } from './catalog/catalog.js';
 import { homePage, aboutPage, demoPage, testErrorPage } from './index.js';
+import { facultyListPage, facultyDetailPage } from './faculty/faculty.js';
 
 // Create a new router instance
 const router = Router();
-
-// TODO: Add import statements for controllers and middleware
-// TODO: Add route definitions
 
 // Home and basic pages
 router.get('/', homePage);
@@ -22,5 +20,10 @@ router.get('/demo', addDemoHeaders, demoPage);
 
 // Route to trigger a test error
 router.get('/test-error', testErrorPage);
+
+// Faculty list page
+router.get('/faculty', facultyListPage);
+// Faculty detail page
+router.get('/faculty/:facultyId', facultyDetailPage);
 
 export default router;
