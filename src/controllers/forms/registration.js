@@ -11,23 +11,32 @@ const router = Router();
 const registrationValidation = [
     body('name')
         .trim()
-        .isLength({ min: 2 })
-        .withMessage('Name must be at least 2 characters'),
+        .isLength({ min: 2, max: 100 })
+        .withMessage('Name must be between 2 and 100 characters')
+        .matches(/^[a-zA-Z\s'-]+$/)
+        .withMessage('Name can only contain letters, spaces, hyphens, and apostrophes'),
     body('email')
         .trim()
         .isEmail()
         .normalizeEmail()
+        .isLength({ max: 255 })
+        .withMessage('Email address is too long')
         .withMessage('Must be a valid email address'),
     body('emailConfirm')
         .trim()
         .custom((value, { req }) => value === req.body.email)
         .withMessage('Email addresses must match'),
     body('password')
-        .isLength({ min: 8 })
+        .isLength({ min: 8, max: 128 })
+        .withMessage('Password must be between 8 and 128 characters')
         .matches(/[0-9]/)
         .withMessage('Password must contain at least one number')
-        .matches(/[!@#$%^&*]/)
-        .withMessage('Password must contain at least one special character'),
+        .matches(/[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/)
+        .withMessage('Password must contain at least one special character')
+        .matches(/[a-z]/)
+        .withMessage('Password must contain at least one lowercase letter')
+        .matches(/[A-Z]/)
+        .withMessage('Password must contain at least one uppercase letter'),
     body('passwordConfirm')
         .custom((value, { req }) => value === req.body.password)
         .withMessage('Passwords must match')
@@ -50,7 +59,9 @@ const processRegistration = async (req, res) => {
     const errors = validationResult(req);
 
     if (!errors.isEmpty()) {
-        console.error('Validation errors:', errors.array());
+        errors.array().forEach(error => {
+            req.flash('error', error.msg);
+        });
         return res.redirect('/register');
     }
 
@@ -62,7 +73,7 @@ const processRegistration = async (req, res) => {
         let existingEmail = await emailExists(email);
 
         if (existingEmail) {
-            console.log('Email already registered');
+            req.flash('warning', 'Email already registered');
             return res.redirect('/register');
         }
 
@@ -72,11 +83,12 @@ const processRegistration = async (req, res) => {
         // Save user to database with hashed password
         await saveUser(name, email, hashedPassword);
 
-        console.log('User saved successfully');
+        req.flash('User saved successfully');
         // NOTE: Later when we add authentication, we'll change this to require login first
-        return res.redirect('/register/list');
+        return res.redirect('/login');
     } catch (error) {
         console.error('Registration unsuccessful:', error);
+        req.flash('error', 'Unable to register user. Please try again later.');
         return res.redirect('/register');
     }
 };

@@ -24,7 +24,9 @@ const handleContactSubmission = async (req, res) => {
 
     if (!errors.isEmpty()) {
         // Log validation errors for developer debugging
-        console.error('Validation errors:', errors.array());
+        errors.array().forEach(error => {
+            req.flash('error', error.msg);
+        });
         // Redirect back to form without saving
         return res.redirect('/contact');
     }
@@ -35,12 +37,13 @@ const handleContactSubmission = async (req, res) => {
     try {
         // Save to database
         await createContactForm(subject, message);
-        console.log('Contact form submitted successfully');
-        // Redirect to responses page on success
-        res.redirect('/contact/responses');
+        // After successfully saving to the database
+        req.flash('success', 'Thank you for contacting us! We will respond soon.');
+        return res.redirect('/contact');
     } catch (error) {
         console.error('Error saving contact form:', error);
-        res.redirect('/contact');
+        req.flash('error', 'Unable to submit your message. Please try again later.');
+        return res.redirect('/contact');
     }
 };
 
@@ -54,6 +57,8 @@ const showContactResponses = async (req, res) => {
         contactForms = await getAllContactForms();
     } catch (error) {
         console.error('Error retrieving contact forms:', error);
+        req.flash('error', 'Unable to retrieve contact forms. Please try again later.');
+        return res.redirect('/contact');
     }
 
     res.render('forms/contact/responses', {
@@ -74,12 +79,23 @@ router.post('/',
     [
         body('subject')
             .trim()
-            .isLength({ min: 2 })
-            .withMessage('Subject must be at least 2 characters'),
+            .isLength({ min: 2, max: 255 })
+            .withMessage('Subject must be between 2 and 255 characters')
+            .matches(/^[a-zA-Z0-9\s\-.,!?]+$/)
+            .withMessage('Subject contains invalid characters'),
         body('message')
             .trim()
-            .isLength({ min: 10 })
-            .withMessage('Message must be at least 10 characters')
+            .isLength({ min: 10, max: 2000 })
+            .withMessage('Message must be between 10 and 2000 characters')
+            .custom((value) => {
+                // Check for spam patterns (excessive repetition)
+                const words = value.split(/\s+/);
+                const uniqueWords = new Set(words);
+                if (words.length > 20 && uniqueWords.size / words.length < 0.3) {
+                    throw new Error('Message appears to be spam');
+                }
+                return true;
+            })
     ],
     handleContactSubmission
 );
