@@ -12,11 +12,14 @@ const loginValidation = [
         .trim()
         .isEmail()
         .withMessage('Please provide a valid email address')
-        .normalizeEmail(),
+        .normalizeEmail()
+        .isLength({ max: 255 })
+        .withMessage('Email address is too long'),
 
     body('password')
-        .isLength({ min: 8 })
-        .withMessage('Password is required')
+        .notEmpty('Password is required')
+        .isLength({ min: 8, max: 128 })
+        .withMessage('Password must be between 8 and 128 characters')
 ];
 
 /**
@@ -36,7 +39,11 @@ const processLogin = async (req, res) => {
     const errors = validationResult(req);
 
     if (!errors.isEmpty()) {
-        console.error('Validation Error:', errors.array());
+        
+        errors.array().forEach(error => {
+            req.flash('error', error.msg);
+        });
+
         return res.redirect('/login');
     }
 
@@ -46,14 +53,14 @@ const processLogin = async (req, res) => {
         let user = await findUserByEmail(email)
 
         if (!user) {
-            console.log('User not found');
+            req.flash('error', 'Invalid email or password');
             return res.redirect('/login');
         }
 
         let userPassword = await verifyPassword(password, user.password)
 
         if (!userPassword) {
-            console.log('Invalid password');
+            req.flash('error', 'Invalid email or password');
             return res.redirect('/login');
         }
 
@@ -62,10 +69,12 @@ const processLogin = async (req, res) => {
 
         req.session.user = user
         
+        req.flash('success', `Welcome ${user.name}`);
         return res.redirect('/dashboard');
     } catch (error) {
         // Model functions do not catch errors, so handle them here
         console.error('Login failed:', error);
+        req.flash('error', 'Login failed. Please try again later.');
         return res.redirect('/login');
     }
 };
